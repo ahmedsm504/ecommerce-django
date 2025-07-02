@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h3 class="text-center mb-4">Checkout</h3>
+
+  <div class="row">
+    <div class="col-md-7">
+      <div class="card shadow-sm p-3 mb-4">
+        <h5>Order Summary</h5>
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Price</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.product.price }} EGP</td>
+              <td>{{ item.subtotal }} EGP</td>
+            </tr>
+            {% endfor %}
+            <tr class="fw-bold">
+              <td colspan="3" class="text-end">Total</td>
+              <td>{{ total }} EGP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="col-md-5">
+      <div class="card shadow-sm p-3">
+        <h5>Shipping Information</h5>
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" value="{{ user.get_full_name }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" value="{{ profile.phone }}" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <textarea name="address" class="form-control" required>{{ profile.address }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-success w-100">Place Order</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

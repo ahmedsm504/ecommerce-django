@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3 class="mb-3">Order #{{ order.id }}</h3>
+
+  <div class="mb-3">
+    <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
+    <p><strong>Status:</strong> 
+      <span class="badge 
+        {% if order.status == 'pending' %} bg-warning 
+        {% elif order.status == 'processing' %} bg-info 
+        {% elif order.status == 'shipped' %} bg-primary 
+        {% elif order.status == 'delivered' %} bg-success 
+        {% elif order.status == 'cancelled' %} bg-danger 
+        {% endif %}
+      ">
+        {{ order.get_status_display }}
+      </span>
+    </p>
+    <p><strong>Paid:</strong> 
+      {% if order.is_paid %}
+        <span class="badge bg-success">Yes</span>
+      {% else %}
+        <span class="badge bg-danger">No</span>
+      {% endif %}
+    </p>
+  </div>
+
+  <hr>
+
+  <h5>Items in Order:</h5>
+  <ul class="list-group mb-4">
+    {% for item in order.items.all %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ item.product.name }}</strong><br>
+        Quantity: {{ item.quantity }}
+        <br>
+        <a href="{% url 'product_detail' item.product.id %}" class="btn btn-sm btn-outline-secondary mt-1">View Product</a>
+      </div>
+      <span class="fw-bold">{{ item.subtotal }} EGP</span>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <!-- Total -->
+  <div class="text-end mb-4">
+    <h5>Total: 
+      <span class="text-success fw-bold">
+        {{ order.total_price }} EGP
+      </span>
+    </h5>
+  </div>
+
+  {% if order.status == "pending" or order.status == "processing" %}
+  <form method="post" action="{% url 'cancel_order' order.id %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to cancel this order?');">
+      ❌ Cancel Order
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

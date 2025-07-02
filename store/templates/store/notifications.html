@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3 class="mb-4">📬 Notifications</h3>
+
+  {% if notifications %}
+    <div class="d-flex justify-content-end mb-3">
+      <a href="{% url 'clear_notifications' %}" class="btn btn-outline-danger btn-sm rounded-pill shadow-sm" onclick="return confirm('Are you sure you want to delete all notifications?')">
+        🗑 Clear All
+      </a>
+    </div>
+
+    <ul class="list-group shadow-sm">
+      {% for note in notifications %}
+        <li class="list-group-item d-flex justify-content-between align-items-center {% if not note.is_read %}list-group-item-warning{% endif %}">
+          <div class="me-auto">
+            <strong class="d-block mb-1">{{ note.message }}</strong>
+            <small class="text-muted">{{ note.created_at|date:"Y-m-d H:i" }}</small>
+          </div>
+          <div class="btn-group btn-group-sm" role="group">
+            {% if note.link %}
+              <a href="{{ note.link }}" class="btn btn-outline-primary rounded-pill">🔗 View</a>
+            {% endif %}
+            <a href="{% url 'delete_notification' note.id %}" class="btn btn-outline-secondary rounded-pill" title="Delete" onclick="return confirm('Delete this notification?')">🗑</a>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="alert alert-info text-center shadow-sm">✨ You have no notifications yet.</div>
+  {% endif %}
+</div>
+{% endblock %}

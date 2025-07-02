@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Your Cart</h2>
+
+{% if user.is_authenticated %}
+<form method="post" action="{% url 'update_cart' %}">
+  {% csrf_token %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Subtotal</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>
+          <input type="number" name="quantity_{{ item.product.id }}" value="{{ item.quantity }}" min="1" class="form-control w-50">
+        </td>
+        <td>{{ item.subtotal }}</td>
+        <td>
+          <a href="{% url 'remove_from_cart' item.product.id %}" class="btn btn-danger btn-sm">Remove</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h4>Total: {{ total }} EGP</h4>
+  <button type="submit" class="btn btn-primary">Update Cart</button>
+  <a href="{% url 'checkout' %}" class="btn btn-success">Proceed to Checkout</a>
+</form>
+{% else %}
+<p class="text-danger">You must <a href="{% url 'login' %}">login</a> to view your cart.</p>
+{% endif %}
+{% endblock %}

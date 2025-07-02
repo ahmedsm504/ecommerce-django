@@ -1,0 +1,27 @@
+<div id="reviews-container">
+  {% for review in reviews %}
+    <div class="border rounded p-2 mb-3">
+      <strong>{{ review.user.username }}</strong> -
+      <span class="star-display">
+        {% for i in "12345" %}
+          <span class="{% if forloop.counter <= review.rating %}filled{% endif %}">&#9733;</span>
+        {% endfor %}
+      </span><br>
+      <small class="text-muted">{{ review.created_at|date:"F j, Y" }}</small>
+      <p>{{ review.comment }}</p>
+    </div>
+  {% endfor %}
+
+  {% if has_next %}
+    <div class="text-center mt-3">
+      <button id="load-more-btn"
+              class="btn btn-outline-secondary"
+              data-product-id="{{ product.id }}"
+              data-next-page="{{ next_page }}">
+        Load More Reviews
+      </button>
+    </div>
+  {% endif %}
+
+  
+</div>

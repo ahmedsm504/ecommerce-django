@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-2">{{ product.name }}</h2>
+
+  {% if average_rating %}
+    <p class="text-warning">
+      Average Rating:
+      <span class="star-display">
+        {% for i in "12345" %}
+          <span class="{% if forloop.counter <= average_rating %}filled{% endif %}">&#9733;</span>
+        {% endfor %}
+      </span>
+      ({{ average_rating }} / 5)
+    </p>
+  {% endif %}
+
+  <div class="row">
+    <!-- صور المنتج -->
+    <div class="col-md-6">
+      {% if product.images.all %}
+      <div id="productCarousel" class="carousel slide shadow rounded" data-bs-ride="carousel">
+        <div class="carousel-inner">
+          {% for img in product.images.all %}
+          <div class="carousel-item {% if forloop.first %}active{% endif %}">
+            <img src="{{ img.image.url }}" class="d-block w-100 rounded" alt="Product Image">
+          </div>
+          {% endfor %}
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon"></span>
+        </button>
+      </div>
+      {% else %}
+      <div class="alert alert-warning">No images available for this product.</div>
+      {% endif %}
+    </div>
+
+    <!-- تفاصيل المنتج -->
+    <div class="col-md-6">
+      <div class="card p-4 shadow-sm">
+        <h4 class="mb-3 text-success">{{ product.price }} EGP</h4>
+        <p class="text-muted">{{ product.description }}</p>
+
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'add_to_cart' product.id %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="quantity" class="form-label">Quantity</label>
+            <input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control w-50">
+          </div>
+          <button type="submit" class="btn btn-success">Add to Cart</button>
+        </form>
+
+        <form method="post" action="{% url 'add_to_wishlist' product.id %}" class="mt-2">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-warning">Add to Wishlist</button>
+        </form>
+        {% else %}
+        <div class="alert alert-danger mt-3">
+          You must <a href="{% url 'login' %}" class="alert-link">login</a> to add items to your cart or wishlist.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+ <h4>Customer Reviews</h4>
+{% if reviews %}
+  {% for review in reviews %}
+    <div class="border rounded p-2 mb-3">
+      <strong>{{ review.user.username }}</strong> -
+      <span class="star-display">
+        {% for i in "12345" %}
+          <span class="{% if forloop.counter <= review.rating %}filled{% endif %}">&#9733;</span>
+        {% endfor %}
+      </span><br>
+
+      <small class="text-muted">{{ review.created_at|date:"F j, Y" }}</small>
+      <p>{{ review.comment }}</p>
+
+      {% if user == review.user %}
+      <div class="mt-2">
+        <!-- زرار تعديل + فورم حذف -->
+        <button class="btn btn-sm btn-outline-primary toggle-edit" data-review-id="{{ review.id }}">Edit</button>
+        <form method="post" action="{% url 'delete_review' product.id review.id %}" class="d-inline-block">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+        </form>
+
+        <!-- فورم التعديل -->
+        <form method="post" action="{% url 'edit_review_inline' product.id review.id %}" class="edit-form mt-2 d-none" id="edit-form-{{ review.id }}">
+          {% csrf_token %}
+          <div class="star-rating mb-2">
+            {% for i in "54321" %}
+              <input type="radio" name="rating" id="edit-rate{{ review.id }}-{{ i }}" value="{{ i }}"
+                     {% if review.rating|stringformat:"s" == i %}checked{% endif %}>
+              <label for="edit-rate{{ review.id }}-{{ i }}">&#9733;</label>
+            {% endfor %}
+          </div>
+          <textarea name="comment" class="form-control mb-2" rows="2">{{ review.comment }}</textarea>
+          <button type="submit" class="btn btn-sm btn-success">Save</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <p>No reviews yet.</p>
+{% endif %}
+
+
+
+
+  <!-- إضافة تقييم -->
+  {% if user.is_authenticated %}
+  <hr>
+  <h5>Add Your Review</h5>
+  <form method="post" action="{% url 'add_review' product.id %}">
+    {% csrf_token %}
+    <div class="mb-2">
+      <label class="form-label">Rating</label><br>
+      <div class="star-rating mb-2">
+        {% for i in "54321" %}
+          <input type="radio" name="rating" value="{{ i }}" id="rate{{ i }}">
+          <label for="rate{{ i }}">&#9733;</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="mb-2">
+      <label class="form-label">Comment</label>
+      <textarea name="comment" class="form-control" rows="3" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit Review</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Star Style -->
+<style>
+.star-display span {
+  font-size: 1.2rem;
+  color: #ccc;
+}
+.star-display .filled {
+  color: orange;
+}
+.star-rating {
+  direction: rtl;
+  display: inline-flex;
+}
+.star-rating input {
+  display: none;
+}
+.star-rating label {
+  font-size: 2rem;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: orange;
+}
+</style>
+<style>
+.star-display span {
+  font-size: 1.2rem;
+  color: #ccc;
+}
+.star-display .filled {
+  color: orange;
+}
+.star-rating {
+  direction: rtl;
+  display: inline-flex;
+}
+.star-rating input {
+  display: none;
+}
+.star-rating label {
+  font-size: 2rem;
+  color: #ccc;
+  cursor: pointer;
+}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: orange;
+}
+</style>
+
+
+<!-- Load More Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function attachLoadMoreHandler() {
+    const loadBtn = document.getElementById('load-more-btn');
+    if (!loadBtn) return;
+
+    loadBtn.addEventListener('click', function () {
+      const productId = this.dataset.productId;
+      const nextPage = this.dataset.nextPage;
+
+      fetch(`/product/${productId}/?page=${nextPage}`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(res => res.text())
+      .then(data => {
+        const parser = new DOMParser();
+        const html = parser.parseFromString(data, 'text/html');
+        const newContainer = html.querySelector('#reviews-container');
+
+        if (newContainer) {
+          const currentWrapper = document.getElementById('review-wrapper');
+          const oldButton = document.getElementById('load-more-btn');
+
+          // Remove the old button
+          if (oldButton) oldButton.remove();
+
+          // Append new reviews before adding button again
+          newContainer.querySelectorAll('.border').forEach(div => {
+            currentWrapper.querySelector('#reviews-container').appendChild(div);
+          });
+
+          // Append new button if exists
+          const newButton = newContainer.querySelector('#load-more-btn');
+          if (newButton) {
+            currentWrapper.querySelector('#reviews-container').appendChild(newButton);
+            attachLoadMoreHandler(); // Re-attach
+          }
+        }
+      });
+    });
+  }
+
+  attachLoadMoreHandler();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const editButtons = document.querySelectorAll('.toggle-edit');
+  editButtons.forEach(btn => {
+    btn.addEventListener('click', function () {
+      const reviewId = this.dataset.reviewId;
+      const form = document.getElementById(`edit-form-${reviewId}`);
+      form.classList.toggle('d-none');
+    });
+  });
+});
+</script>
+
+
+{% endblock %}
