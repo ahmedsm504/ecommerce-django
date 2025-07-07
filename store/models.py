@@ -16,9 +16,10 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     available = models.BooleanField(default=True)
 
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='products')  # ✅
+
     def __str__(self):
         return self.name
-
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
@@ -26,7 +27,6 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Image of {self.product.name}"
-
 
 class ProductReview(models.Model):
     product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
@@ -37,7 +37,6 @@ class ProductReview(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name} ({self.rating})"
-
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -56,17 +55,17 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_orders', null=True, blank=True)  # ✅
     created_at = models.DateTimeField(auto_now_add=True)
     is_paid = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     def __str__(self):
         return f"Order #{self.id} by {self.user.username}"
+
     def total_price(self):
         return sum(item.subtotal() for item in self.items.all())
-
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
@@ -78,7 +77,7 @@ class OrderItem(models.Model):
 
     def subtotal(self):
         return self.product.price * self.quantity
-    
+
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     message = models.CharField(max_length=255)
@@ -95,8 +94,7 @@ class Wishlist(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'product')  # ما يضيفش نفس المنتج مرتين
+        unique_together = ('user', 'product')
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name}"
-

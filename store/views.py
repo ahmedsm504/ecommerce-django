@@ -1,21 +1,19 @@
 # views.py
 
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Product, ProductImage, Category, Order, OrderItem
+from .models import Product, ProductImage, Category, Order, OrderItem, Notification, Wishlist, Profile, ProductReview
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from .models import Notification
-from .models import Wishlist
-from django.db.models import Q
-
+from django.db.models import Q, Avg
+from django.contrib import messages
+from django.core.paginator import Paginator
 
 
 
 def product_list(request):
     categories = Category.objects.prefetch_related('products').all()
-    
     unread_notifications = 0
     if request.user.is_authenticated:
         unread_notifications = request.user.notifications.filter(is_read=False).count()
@@ -26,11 +24,6 @@ def product_list(request):
         'unread_notifications': unread_notifications,
     })
 
-
-from django.shortcuts import render, get_object_or_404
-from django.core.paginator import Paginator
-from django.db.models import Avg
-from .models import Product
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -54,25 +47,16 @@ def product_detail(request, pk):
         'unread_notifications': unread_notifications,
     }
 
-    # لو الطلب من خلال JavaScript - AJAX
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-     return render(request, 'store/partials/review_list.html', context)
-
+        return render(request, 'store/partials/review_list.html', context)
 
     return render(request, 'store/product_detail.html', context)
 
 
-
-
-from django.contrib import messages
-from django.shortcuts import redirect, get_object_or_404, render
-from .models import Product, ProductReview
-from django.contrib.auth.decorators import login_required
-
 @login_required
 def add_review(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    
+
     if request.method == 'POST':
         rating = request.POST.get('rating')
         comment = request.POST.get('comment', '')
@@ -81,7 +65,6 @@ def add_review(request, pk):
             messages.error(request, "Please select a rating before submitting your review.")
             return redirect('product_detail', pk=pk)
 
-        # Check if user already reviewed this product
         existing_review = ProductReview.objects.filter(product=product, user=request.user).first()
         if existing_review:
             messages.warning(request, "You have already reviewed this product.")
@@ -98,6 +81,8 @@ def add_review(request, pk):
 
     return redirect('product_detail', pk=pk)
 
+
+# ... (rest of views remain unchanged)
 
 
 def category_detail(request, category_id):
@@ -149,39 +134,44 @@ from .models import Profile  # لو مش مستورد
 
 from .models import Notification  # تأكد إن السطر ده موجود فوق
 
+from collections import defaultdict
+
 @login_required
 def checkout(request):
     cart = request.session.get('cart', {})
     if not cart:
         return redirect('product_list')
 
-    items = []
-    total = 0
-
-    for product_id, quantity in cart.items():
-        product = Product.objects.get(id=product_id)
-        subtotal = product.price * quantity
-        items.append({'product': product, 'quantity': quantity, 'subtotal': subtotal})
-        total += subtotal
-
     profile = request.user.profile
-
     if request.method == 'POST':
-        # حفظ البيانات لو المستخدم كتب عنوان أو موبايل
         address = request.POST.get('address')
         phone = request.POST.get('phone')
-
         if address:
             profile.address = address
         if phone:
             profile.phone = phone
         profile.save()
 
-        order = Order.objects.create(user=request.user, is_paid=True)
-        for item in items:
-            OrderItem.objects.create(order=order, product=item['product'], quantity=item['quantity'])
+        # 🟢 تجميع المنتجات حسب البائع
+        seller_items = defaultdict(list)
+        for product_id, quantity in cart.items():
+            product = Product.objects.get(id=product_id)
+            seller_items[product.seller].append({'product': product, 'quantity': quantity})
 
-        # ✅ إنشاء إشعار بعد إتمام الطلب
+        for seller, items in seller_items.items():
+            order = Order.objects.create(user=request.user, is_paid=True)
+
+            for item in items:
+                OrderItem.objects.create(order=order, product=item['product'], quantity=item['quantity'])
+
+            # إشعار للبائع
+            Notification.objects.create(
+                user=seller,
+                message=f"New order from {request.user.username} includes your products.",
+                link="/admin/store/order/"
+            )
+
+        # إشعار للمشتري
         Notification.objects.create(
             user=request.user,
             message="Your order has been placed successfully.",
@@ -189,13 +179,23 @@ def checkout(request):
         )
 
         request.session['cart'] = {}
-        return render(request, 'store/checkout_success.html', {'order': order})
+        return render(request, 'store/checkout_success.html')
+
+    # في حالة GET نعرض ملخص السلة
+    items = []
+    total = 0
+    for product_id, quantity in cart.items():
+        product = Product.objects.get(id=product_id)
+        subtotal = product.price * quantity
+        items.append({'product': product, 'quantity': quantity, 'subtotal': subtotal})
+        total += subtotal
 
     return render(request, 'store/checkout.html', {
         'items': items,
         'total': total,
         'profile': profile,
     })
+
 
 # عرض سلة المشتريات
 @login_required
@@ -425,3 +425,40 @@ def delete_review(request, product_id, review_id):
 
 
 
+from django.contrib.auth.decorators import login_required
+from .models import OrderItem, Product
+
+@login_required
+def seller_orders(request):
+    # كل المنتجات الخاصة بالإدمن الحالي
+    seller_products = Product.objects.filter(seller=request.user)
+
+    # كل العناصر اللي فيها منتجات هذا الإدمن
+    order_items = OrderItem.objects.filter(product__in=seller_products).select_related('order', 'product')
+
+    # نجهز جدول الطلبات مع المنتجات المطلوبة من هذا الإدمن
+    orders_dict = {}
+    for item in order_items:
+        order_id = item.order.id
+        if order_id not in orders_dict:
+            orders_dict[order_id] = {
+                'order': item.order,
+                'items': []
+            }
+        orders_dict[order_id]['items'].append(item)
+
+    return render(request, 'store/seller_orders.html', {
+        'seller_orders': orders_dict.values(),
+    })
+
+
+from django.contrib.auth.models import User
+
+def seller_products(request, seller_id):
+    seller = get_object_or_404(User, id=seller_id)
+    products = Product.objects.filter(seller=seller, available=True)
+
+    return render(request, 'store/seller_products.html', {
+        'seller': seller,
+        'products': products,
+    })

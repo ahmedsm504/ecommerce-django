@@ -1,0 +1,56 @@
+{% extends 'store/base.html' %}
+
+{% block title %}My Orders (Admin){% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Orders for Your Products</h2>
+
+{% if orders %}
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle table-hover">
+      <thead class="table-dark">
+        <tr>
+          <th>Order ID</th>
+          <th>Customer</th>
+          <th>Products</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>#{{ order.id }}</td>
+            <td>{{ order.user.first_name|default:order.user.username }}</td>
+            <td>
+              <ul class="mb-0 ps-3">
+                {% for item in order.items.all %}
+                  {% if item.product.seller == user %}
+                    <li>
+                      {{ item.product.name }} - x{{ item.quantity }}
+                    </li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </td>
+            <td>
+              <span class="badge 
+                {% if order.status == 'pending' %}bg-warning
+                {% elif order.status == 'processing' %}bg-info
+                {% elif order.status == 'cancelled' %}bg-danger
+                {% elif order.status == 'delivered' %}bg-success
+                {% else %}bg-secondary{% endif %}">
+                {{ order.status|capfirst }}
+              </span>
+            </td>
+            <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="alert alert-info">No orders found for your products.</div>
+{% endif %}
+
+{% endblock %}

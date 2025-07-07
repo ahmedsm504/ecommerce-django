@@ -3,6 +3,13 @@
 <div class="container mt-4">
   <h2 class="mb-2">{{ product.name }}</h2>
 
+  <p class="text-muted mb-2">
+    Sold by:
+    <a href="{% url 'seller_products' product.seller.id %}" class="text-decoration-none text-primary">
+      {{ product.seller.get_full_name|default:product.seller.username }}
+    </a>
+  </p>
+
   {% if average_rating %}
     <p class="text-warning">
       Average Rating:
@@ -86,14 +93,12 @@
 
       {% if user == review.user %}
       <div class="mt-2">
-        <!-- زرار تعديل + فورم حذف -->
         <button class="btn btn-sm btn-outline-primary toggle-edit" data-review-id="{{ review.id }}">Edit</button>
         <form method="post" action="{% url 'delete_review' product.id review.id %}" class="d-inline-block">
           {% csrf_token %}
           <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
 
-        <!-- فورم التعديل -->
         <form method="post" action="{% url 'edit_review_inline' product.id review.id %}" class="edit-form mt-2 d-none" id="edit-form-{{ review.id }}">
           {% csrf_token %}
           <div class="star-rating mb-2">
@@ -114,10 +119,6 @@
   <p>No reviews yet.</p>
 {% endif %}
 
-
-
-
-  <!-- إضافة تقييم -->
   {% if user.is_authenticated %}
   <hr>
   <h5>Add Your Review</h5>
@@ -143,34 +144,7 @@
   {% endif %}
 </div>
 
-<!-- Star Style -->
-<style>
-.star-display span {
-  font-size: 1.2rem;
-  color: #ccc;
-}
-.star-display .filled {
-  color: orange;
-}
-.star-rating {
-  direction: rtl;
-  display: inline-flex;
-}
-.star-rating input {
-  display: none;
-}
-.star-rating label {
-  font-size: 2rem;
-  color: #ccc;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.star-rating input:checked ~ label,
-.star-rating label:hover,
-.star-rating label:hover ~ label {
-  color: orange;
-}
-</style>
+<!-- Star Styles -->
 <style>
 .star-display span {
   font-size: 1.2rem;
@@ -198,56 +172,7 @@
 }
 </style>
 
-
-<!-- Load More Script -->
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  function attachLoadMoreHandler() {
-    const loadBtn = document.getElementById('load-more-btn');
-    if (!loadBtn) return;
-
-    loadBtn.addEventListener('click', function () {
-      const productId = this.dataset.productId;
-      const nextPage = this.dataset.nextPage;
-
-      fetch(`/product/${productId}/?page=${nextPage}`, {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(res => res.text())
-      .then(data => {
-        const parser = new DOMParser();
-        const html = parser.parseFromString(data, 'text/html');
-        const newContainer = html.querySelector('#reviews-container');
-
-        if (newContainer) {
-          const currentWrapper = document.getElementById('review-wrapper');
-          const oldButton = document.getElementById('load-more-btn');
-
-          // Remove the old button
-          if (oldButton) oldButton.remove();
-
-          // Append new reviews before adding button again
-          newContainer.querySelectorAll('.border').forEach(div => {
-            currentWrapper.querySelector('#reviews-container').appendChild(div);
-          });
-
-          // Append new button if exists
-          const newButton = newContainer.querySelector('#load-more-btn');
-          if (newButton) {
-            currentWrapper.querySelector('#reviews-container').appendChild(newButton);
-            attachLoadMoreHandler(); // Re-attach
-          }
-        }
-      });
-    });
-  }
-
-  attachLoadMoreHandler();
-});
-</script>
-
+<!-- Load More & Edit Scripts -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const editButtons = document.querySelectorAll('.toggle-edit');
@@ -260,6 +185,5 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
-
 
 {% endblock %}
